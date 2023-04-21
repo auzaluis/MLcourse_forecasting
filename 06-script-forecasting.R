@@ -41,7 +41,9 @@ ggplotly(
 
 diapers.reg <- dynlm(data = TS.diapers,
                      formula = TS.diapers ~
-                       trend(TS.diapers))
+                       trend(TS.diapers) +
+                       season(TS.diapers) +
+                       L(TS.diapers, 1))
 
 
 
@@ -53,13 +55,16 @@ summary(diapers.reg)
 
 ggplotly(
   
-  ggplot(data = DF.training.diapers,
-         mapping = aes(x = periodo)) +
+  data.frame(periodo = DF.training.diapers$periodo,
+             sales = DF.training.diapers$sales,
+             predicted = c(NA, diapers.reg$fitted.values)) %>% 
+  
+  ggplot(mapping = aes(x = periodo)) +
     
     geom_point(mapping = aes(y = sales),
                color = "#1d3557") +
     
-    geom_line(mapping = aes(y = diapers.reg$fitted.values),
+    geom_line(mapping = aes(y = predicted),
               color = "#e63946") +
     
     theme_minimal() +
@@ -91,6 +96,36 @@ plot(diapers.reg, which = 2)
 
 
 
-## Test de normalidad
+### Test de normalidad
 
 shapiro.test(x = diapers.reg$residuals)
+
+
+
+## Homocedasticidad ----
+
+### Evaluación gráfica
+
+plot(diapers.reg, which = 1)
+
+
+
+### Test de homocedasticidad
+
+bptest(formula = diapers.reg,
+       studentize = F)
+
+
+
+## Autocorrelación
+
+plot(acf(x = diapers.reg$residuals,
+         lag = 12))
+
+
+Box.test(x = diapers.reg$residuals,
+         lag = 12,
+         type = "Ljung-Box")
+
+
+
