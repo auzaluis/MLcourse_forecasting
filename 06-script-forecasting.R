@@ -10,13 +10,19 @@ load("06-data-forecasting.RData")
 # Creando DF de entrenamiento ----
 
 DF.training.diapers <- DF.diapers %>% 
-  filter(periodo <= "2015-12-01")
+  filter(periodo <= "2015-12-01") %>% 
+  mutate(promo = ifelse(periodo == promo, yes = 1, no = 0),
+         post_promo = ifelse(periodo == post_promo, yes = 1, no = 0))
 
+
+promo <- as_date("2015-07-01")
+post_promo <- as_date("2015-08-01")
 
 
 # Creando formato TS (time series)
 
-TS.diapers <- ts(data = DF.training.diapers$sales,
+TS.diapers <- ts(data = DF.training.diapers %>% 
+                   select(sales, promo, post_promo),
                  start = c(2006,1),
                  end = c(2015,12),
                  frequency = 12)
@@ -25,11 +31,11 @@ TS.diapers <- ts(data = DF.training.diapers$sales,
 
 # Descomposición ----
 
-plot(TS.diapers)
+plot(TS.diapers[,"sales"])
 
 ggplotly(
   
-  TS.diapers %>% 
+  TS.diapers[,"sales"] %>% 
     decompose(type = "additive") %>% 
     autoplot()
   
@@ -40,16 +46,26 @@ ggplotly(
 # Definición del modelo ----
 
 diapers.reg <- dynlm(data = TS.diapers,
-                     formula = TS.diapers ~
-                       trend(TS.diapers) +
-                       season(TS.diapers) +
-                       L(TS.diapers, 1))
+                     formula = sales ~
+                       trend(sales) +
+                       season(sales) +
+                       L(sales, 1) +
+                       promo +
+                       post_promo)
 
 
 
 # Analisis de precisión/asertividad
 
 summary(diapers.reg)
+
+
+
+ggplotly(
+  
+  
+  
+)
 
 
 
