@@ -9,14 +9,16 @@ load("06-data-forecasting.RData")
 
 # Creando DF de entrenamiento ----
 
+promo <- as_date("2015-07-01")
+post_promo <- as_date("2015-08-01")
+
+
+
 DF.training.diapers <- DF.diapers %>% 
   filter(periodo <= "2015-12-01") %>% 
   mutate(promo = ifelse(periodo == promo, yes = 1, no = 0),
          post_promo = ifelse(periodo == post_promo, yes = 1, no = 0))
 
-
-promo <- as_date("2015-07-01")
-post_promo <- as_date("2015-08-01")
 
 
 # Creando formato TS (time series)
@@ -63,7 +65,18 @@ summary(diapers.reg)
 
 ggplotly(
   
-  
+  ggplot(mapping = aes(x = TS.diapers[-1,"sales"],
+                       y = diapers.reg$fitted.values)) +
+    
+    geom_point(color = "#1d3557") +
+    
+    theme_minimal() +
+    
+    labs(title = "Ventas reales VS Predicción",
+         x = "Real",
+         y = "Predicción") +
+    
+    theme(plot.title = element_text(hjust = 0.5))
   
 )
 
