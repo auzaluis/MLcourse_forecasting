@@ -158,3 +158,176 @@ Box.test(x = diapers.reg$residuals,
 
 
 
+# Forecasting ----
+
+DF.model.diapers <- tibble(
+  
+  periodo = DF.training.diapers$periodo[-1],
+  diapers.reg$model
+  
+)
+
+
+## Creación de vectores ----
+
+periodo <- DF.diapers %>% 
+  filter(periodo > max(DF.training.diapers$periodo)) %>% 
+  select(periodo)
+
+sales <- DF.diapers %>% 
+  filter(periodo > max(DF.training.diapers$periodo)) %>% 
+  select(sales)
+
+`trend(sales)` <- seq(from = (nrow(DF.training.diapers) + 1) / 12,
+                      to = (nrow(DF.training.diapers) + 5) / 12,
+                      by = 1/12)
+
+`season(sales)` <- c("Jan", "Feb", "Mar", "Apr", "May")
+
+`L(sales, 1)` <- DF.diapers %>% 
+  filter(periodo >= max(DF.training.diapers$periodo),
+         periodo < max(DF.diapers$periodo)) %>% 
+  select(sales)
+
+promo      <- c(0, 0, .7, 0, 0)
+post_promo <- c(0, 0, 0, .7, 0)
+
+
+
+## Creación del DF.testing ----
+
+DF.testing.diapers <- data.frame(
+  
+  periodo         = periodo,
+  sales           = sales,
+  `trend(sales)`  = `trend(sales)`,
+  `season(sales)` = `season(sales)`,
+  `L(sales, 1)`   = `L(sales, 1)`,
+  promo           = promo,
+  post_promo      = post_promo,
+  
+  check.names = F
+  
+)
+
+colnames(DF.testing.diapers)[5] <- "L(sales, 1)"
+
+
+
+diapers.reg$coefficients[3:13]
+
+
+
+season.ref <- data.frame(
+  
+  `season(sales)` = c("Jan", "Feb", "Mar",
+                      "Apr", "May", "Jun",
+                      "Jul", "Aug", "Sep",
+                      "Oct", "Nov", "Dec"),
+  
+  coefficient = c(0, diapers.reg$coefficients[3:13]),
+  
+  check.names = F,
+  row.names = NULL
+  
+)
+
+
+## Creación del DF.forecast ----
+
+DF.forecast.diapers <- bind_rows(DF.model.diapers,
+                                 DF.testing.diapers)
+
+
+DF.forecast.diapers2 <- left_join(x = DF.forecast.diapers,
+                                  y = season.ref,
+                                  by = "season(sales)") %>% 
+  
+  select(-`season(sales)`) %>% 
+  
+  rename(`season(sales)` = coefficient) %>% 
+  
+  mutate(intercept = rep(diapers.reg$coefficients[1],
+                         times = nrow(DF.forecast.diapers))) %>% 
+  
+  relocate(c("intercept", "season(sales)"),
+           .after = sales) %>% 
+  
+  mutate(
+    
+    prediction = intercept +
+      `season(sales)` +
+      `trend(sales)` * diapers.reg$coefficients[2] +
+      `L(sales, 1)` * diapers.reg$coefficients[14] +
+      promo * diapers.reg$coefficients[15] +
+      post_promo * diapers.reg$coefficients[16],
+    
+    forecast = ifelse(test = periodo > max(DF.training.diapers$periodo),
+                      yes = "Sí",
+                      no = "No")
+      
+  )
+  
+  
+
+## Evaluación de la predicción
+
+ggplotly(
+  
+  DF.forecast.diapers2 %>% 
+  
+  ggplot(mapping = aes(x = sales,
+                       y = prediction,
+                       color = forecast)) +
+    
+    geom_point() +
+    
+    theme_minimal() +
+    
+    scale_color_manual(values = c("#1d3557", "#e63946")) +
+    
+    labs(title = "Ventas reales VS Predicción",
+         x = "Real",
+         y = "Predicción") +
+    
+    theme(plot.title = element_text(hjust = 0.5))
+  
+)
+
+
+
+ggplotly(
+  
+  
+  
+  DF.forecast.diapers2 %>%
+    
+    ggplot(mapping = aes(x = periodo,
+                         color = forecast)) +
+    
+    geom_point(mapping = aes(y = sales)) +
+    
+    geom_line(mapping = aes(y = prediction),
+              color = "#787878") +
+    
+    scale_color_manual(values = c("#1d3557", "#e63946")) +
+    
+    theme_minimal() +
+    
+    theme(axis.title.x = element_blank(),
+          legend.position = "none")
+  
+)
+
+
+
+
+
+
+
+
+
+
+
+
+
